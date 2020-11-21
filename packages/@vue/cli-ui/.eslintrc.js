@@ -23,6 +23,9 @@ module.exports = {
   },
 
   parserOptions: {
-    parser: 'babel-eslint'
+    parser: '@babel/eslint-parser',
+    babelOptions: {
+      cwd: require('path').resolve(__dirname)
+    }
   }
 }
