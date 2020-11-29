@@ -21,6 +21,7 @@ if (args['e2e-only']) {
 const jestArgs = [
   '--env', 'node',
   '--runInBand',
+  '--detectOpenHandles',
   ...rawArgs,
   ...(regex ? [regex] : [])
 ]
