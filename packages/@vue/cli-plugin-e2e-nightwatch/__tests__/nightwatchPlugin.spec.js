@@ -21,6 +21,8 @@ describe('nightwatch e2e plugin', () => {
     })
 
     await project.run('vue-cli-service lint')
+    const data = await fs.readFileSync(path.join(project.dir, 'src/components/HelloWorld.vue'))
+    console.log(data.toString())
 
     await fs.copy(path.join(__dirname, './lib/globals-generated.js'),
       path.join(project.dir, 'tests/e2e/globals-generated.js'))
@@ -45,6 +47,9 @@ describe('nightwatch e2e plugin', () => {
     let server
     try {
       await project.run(`vue-cli-service build`)
+
+      const data = await fs.readFileSync(path.join(project.dir, 'src/components/HelloWorld.vue'))
+      console.log(data.toString())
       server = createServer({ root: path.join(project.dir, 'dist') })
       await new Promise((resolve, reject) => {
         server.listen(8080, err => {
