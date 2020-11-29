@@ -23,8 +23,9 @@ module.exports = {
 
   'verify if string "e2e-nightwatch" is within the cli plugin links': (browser) => {
     const homepage = browser.page.homepage()
-    const welcomeSection = homepage.section.app.section.welcome
+    homepage.waitForElementVisible('@appContainer')
 
+    const welcomeSection = homepage.section.app.section.welcome
     welcomeSection.expect.element('@cliPluginLinks').text.to.contain('e2e-nightwatch')
   }
 }
