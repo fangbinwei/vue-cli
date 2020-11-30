@@ -22,6 +22,7 @@ const jestArgs = [
   '--env', 'node',
   '--runInBand',
   '--detectOpenHandles',
+  '--forceExit',
   ...rawArgs,
   ...(regex ? [regex] : [])
 ]

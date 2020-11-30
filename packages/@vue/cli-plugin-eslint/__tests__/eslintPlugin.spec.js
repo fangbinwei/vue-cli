@@ -221,7 +221,9 @@ test('should persist cache', async () => {
   })
 
   await donePromise
-  server.kill('SIGTERM')
+  server.kill('SIGTERM', {
+    forceKillAfterTimeout: 1000
+  })
 
   expect(has('node_modules/.cache/.eslintcache')).toBe(true)
 })
