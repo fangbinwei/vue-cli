@@ -75,3 +75,5 @@ module.exports = (api, options) => {
     api.extendPackage(options.configs)
   }
 }
+
+module.exports.stage = 0
