@@ -78,7 +78,21 @@ describe('topologicalSorting', () => {
     ])
   })
 
-  test('it is not possible to order plugin because of cyclic graph, return plugins directly', () => {
+  test('after multiple', () => {
+    const plugins = [
+      plugin('foo', { after: ['bar', 'baz'] }),
+      plugin('bar'),
+      plugin('baz')
+    ]
+    const orderPlugins = topologicalSorting(plugins)
+    expect(orderPlugins).toEqual([
+      plugin('bar'),
+      plugin('baz'),
+      plugin('foo', { after: ['bar', 'baz'] })
+    ])
+  })
+
+  test('it is not possible to order plugins because of cyclic graph, return plugins directly', () => {
     const plugins = [
       plugin('foo', { after: 'bar' }),
       plugin('bar', { after: 'baz' }),
