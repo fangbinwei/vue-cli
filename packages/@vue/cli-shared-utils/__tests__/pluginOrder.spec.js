@@ -1,15 +1,16 @@
-/* eslint-disable no-unused-vars */
-const { insertPluginByStage, arrangePlugins, DEFAULT_STAGE } = require('../lib/pluginOrder.js')
+const { insertPluginByStage, topologicalSorting } = require('../lib/pluginOrder.js')
 
 /**
  *
  * @param {string} id
- * @param {number} stage
- * @param {string|Array<string>} after
- * @returns
+ * @param {{stage: number, after: string|Array<string>}} [order]
  */
-function newPlugin (id, stage, after) {
-  const apply = () => {}
+function plugin (id, order) {
+  order = order || {}
+  const { stage, after } = order
+
+  // use object instead of function here
+  const apply = {}
   apply.stage = stage
   apply.after = after
   return {
@@ -17,46 +18,77 @@ function newPlugin (id, stage, after) {
     apply
   }
 }
-/**
- *
- * @param {Array<{name: string, stage?: number, after?: string|Array<string>}>} props
- */
-function newPlugins (props) {
-  const res = []
-  props.forEach(p => {
-    res.push(newPlugin(p.name, p.stage, p.after))
+
+describe('insertPluginByStage', () => {
+  test('No stage specified', () => {
+    const plugins = [
+      plugin('foo'),
+      plugin('bar'),
+      plugin('baz')
+    ]
+    const orderPlugins = []
+    insertPluginByStage(orderPlugins, plugins[0])
+    insertPluginByStage(orderPlugins, plugins[1])
+    insertPluginByStage(orderPlugins, plugins[2])
+
+    expect(orderPlugins).toEqual(plugins)
   })
-  return res
-}
 
-test('insertPluginByStage: No stage specified', () => {
-  const plugins = [
-    newPlugin('foo'),
-    newPlugin('bar'),
-    newPlugin('baz')
-  ]
-  const pluginsOrder = []
-  insertPluginByStage(pluginsOrder, plugins[0])
-  insertPluginByStage(pluginsOrder, plugins[1])
-  insertPluginByStage(pluginsOrder, plugins[2])
+  test('stage specified', () => {
+    const plugins = [
+      plugin('foo'),
+      plugin('bar', { stage: 0 }),
+      plugin('baz', { stage: 200 })
+    ]
+    const orderPlugins = []
+    insertPluginByStage(orderPlugins, plugins[0])
+    insertPluginByStage(orderPlugins, plugins[1])
+    insertPluginByStage(orderPlugins, plugins[2])
 
-  expect(pluginsOrder[0]).toMatchObject({ id: 'foo', stage: DEFAULT_STAGE, after: new Set() })
-  expect(pluginsOrder[1]).toMatchObject({ id: 'bar', stage: DEFAULT_STAGE, after: new Set() })
-  expect(pluginsOrder[2]).toMatchObject({ id: 'baz', stage: DEFAULT_STAGE, after: new Set() })
+    expect(orderPlugins).toEqual([
+      plugin('bar', { stage: 0 }),
+      plugin('foo'),
+      plugin('baz', { stage: 200 })
+    ])
+  })
 })
 
-test('insertPluginByStage: stage specified', () => {
-  const plugins = [
-    newPlugin('foo'),
-    newPlugin('bar', 0),
-    newPlugin('baz', 200)
-  ]
-  const pluginsOrder = []
-  insertPluginByStage(pluginsOrder, plugins[0])
-  insertPluginByStage(pluginsOrder, plugins[1])
-  insertPluginByStage(pluginsOrder, plugins[2])
+describe('topologicalSorting', () => {
+  test('no after specified', () => {
+    const plugins = [
+      plugin('foo'),
+      plugin('bar'),
+      plugin('baz')
+    ]
+    const orderPlugins = topologicalSorting(plugins)
+    expect(orderPlugins).toEqual(plugins)
+  })
 
-  expect(pluginsOrder[0]).toMatchObject({ id: 'bar', stage: 0, after: new Set() })
-  expect(pluginsOrder[1]).toMatchObject({ id: 'foo', stage: DEFAULT_STAGE, after: new Set() })
-  expect(pluginsOrder[2]).toMatchObject({ id: 'baz', stage: 200, after: new Set() })
+  test('after specified', () => {
+    const plugins = [
+      plugin('foo', { after: 'bar' }),
+      plugin('bar', { after: 'baz' }),
+      plugin('baz')
+    ]
+    const orderPlugins = topologicalSorting(plugins)
+    expect(orderPlugins).toEqual([
+      plugin('baz'),
+      plugin('bar', { after: 'baz' }),
+      plugin('foo', { after: 'bar' })
+    ])
+  })
+
+  test('it is not possible to order plugin because of cyclic graph, return plugins directly', () => {
+    const plugins = [
+      plugin('foo', { after: 'bar' }),
+      plugin('bar', { after: 'baz' }),
+      plugin('baz', { after: 'foo' })
+    ]
+    const orderPlugins = topologicalSorting(plugins)
+    expect(orderPlugins).toEqual(plugins)
+  })
+})
+
+describe('arrangePlugins', () => {
+  // TODO:
 })
