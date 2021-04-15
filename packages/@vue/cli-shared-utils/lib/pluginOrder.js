@@ -1,8 +1,41 @@
+// @ts-check
 const DEFAULT_STAGE = 100
 
-exports.DEFAULT_STAGE = DEFAULT_STAGE
-/** @typedef {{after?: string|Array<string>, stage?: number)}} Apply */
-/** @typedef {{apply: Apply, after: Set<string>, stage: number}} Plugin */
+/** @typedef {{after?: string|Array<string>, stage?: number}} Apply */
+/** @typedef {{id: string, apply: Apply}} Plugin */
+/** @typedef {{after: Set<string>, stage: number}} OrderParams */
+
+/** @type {Map<string, OrderParams>} */
+const orderParamsCache = new Map()
+
+/**
+ *
+ * @param {Plugin} plugin
+ * @returns {OrderParams}
+ */
+function getOrderParams (plugin) {
+  if (!process.env.VUE_CLI_TEST && orderParamsCache.has(plugin.id)) {
+    return orderParamsCache.get(plugin.id)
+  }
+  const apply = plugin.apply
+
+  let stage = DEFAULT_STAGE
+  if (typeof apply.stage === 'number') {
+    stage = apply.stage
+  }
+
+  let after = new Set()
+  if (typeof apply.after === 'string') {
+    after = new Set([apply.after])
+  } else if (Array.isArray(apply.after)) {
+    after = new Set(apply.after)
+  }
+  if (!process.env.VUE_CLI_TEST) {
+    orderParamsCache.set(plugin.id, { stage, after })
+  }
+
+  return { stage, after }
+}
 
 /**
  * Insertion sort, 'stage' ascending order
@@ -11,33 +44,21 @@ exports.DEFAULT_STAGE = DEFAULT_STAGE
  * @param {Plugin} item
  */
 exports.insertPluginByStage = (plugins, item) => {
-  const { apply } = item
-
-  let after = new Set()
-  if (typeof apply.after === 'string') {
-    after = new Set([apply.after])
-  } else if (Array.isArray(apply.after)) {
-    after = new Set(apply.after)
-  }
-
-  let stage = DEFAULT_STAGE
-  if (typeof apply.stage === 'number') {
-    stage = apply.stage
-  }
+  const { stage } = getOrderParams(item)
 
   let i = plugins.length
   while (i > 0) {
     i--
     const x = plugins[i]
     plugins[i + 1] = x
-    const xStage = x.stage
+    const xStage = getOrderParams(x).stage
     if (xStage > stage) {
       continue
     }
     i++
     break
   }
-  plugins[i] = Object.assign(item, { stage, after })
+  plugins[i] = item
 }
 
 /**
@@ -45,8 +66,8 @@ exports.insertPluginByStage = (plugins, item) => {
  * @param {Array<Plugin>} plugins
  * @returns {Array<Plugin>}
  */
-function TopologicalSorting (plugins) {
-  /** @type {Map<id, Plugin>} */
+function topologicalSorting (plugins) {
+  /** @type {Map<string, Plugin>} */
   const pluginsMap = new Map(plugins.map(p => [p.id, p]))
 
   /** @type {Map<Plugin, number>} */
@@ -56,9 +77,10 @@ function TopologicalSorting (plugins) {
   const graph = new Map()
 
   plugins.forEach(p => {
-    indegrees.set(p, p.after.size)
-    if (p.after.size > 0) {
-      for (const id of p.after) {
+    const after = getOrderParams(p).after
+    indegrees.set(p, after.size)
+    if (after.size > 0) {
+      for (const id of after) {
         const prerequisite = pluginsMap.get(id)
         // remove invalid data
         if (!prerequisite) {
@@ -98,9 +120,11 @@ function TopologicalSorting (plugins) {
   // return valid ? res : []
   return valid ? res : plugins
 }
+exports.topologicalSorting = topologicalSorting
 
 /**
- * Arrange plugins by 'after' property. Plugins should be sorted by 'stage' property firstly.
+ * Arrange plugins by 'after' property.
+ * Plugins should be sorted by 'stage' property firstly.
  * @param {Array<Plugin>} plugins
  * @returns {Array<Plugin>}
  */
@@ -115,15 +139,15 @@ exports.arrangePlugins = (plugins) => {
 
   for (let i = 0; i < plugins.length; i++) {
     const cur = plugins[i]
-    const stage = cur.stage
+    const stage = getOrderParams(cur).stage
     if (!stageGroup.has(stage)) {
       stageGroup.set(stage, [])
     }
     stageGroup.get(stage).push(cur)
   }
 
-  stageGroup.forEach((stageGroupPlugins, stage) => {
-    res.push(...TopologicalSorting(stageGroupPlugins))
+  stageGroup.forEach((stageGroupPlugins) => {
+    res.push(...topologicalSorting(stageGroupPlugins))
   })
   return res
 }
