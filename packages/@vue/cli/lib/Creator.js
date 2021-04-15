@@ -4,7 +4,6 @@ const inquirer = require('inquirer')
 const EventEmitter = require('events')
 const Generator = require('./Generator')
 const cloneDeep = require('lodash.clonedeep')
-// const sortObject = require('./util/sortObject')
 const getVersions = require('./util/getVersions')
 const PackageManager = require('./util/ProjectPackageManager')
 const { clearConsole } = require('./util/clearConsole')
@@ -14,7 +13,7 @@ const { formatFeatures } = require('./util/features')
 const loadLocalPreset = require('./util/loadLocalPreset')
 const loadRemotePreset = require('./util/loadRemotePreset')
 const generateReadme = require('./util/generateReadme')
-const { resolvePkg, isOfficialPlugin } = require('@vue/cli-shared-utils')
+const { resolvePkg, isOfficialPlugin, insertPluginByStage, arrangePlugins } = require('@vue/cli-shared-utils')
 
 const {
   defaults,
@@ -110,16 +109,6 @@ module.exports = class Creator extends EventEmitter {
         preset.plugins['@vue/cli-plugin-router'].historyMode = true
       }
     }
-
-    // Introducing this hack because typescript plugin must be invoked after router.
-    // Currently we rely on the `plugins` object enumeration order,
-    // which depends on the order of the field initialization.
-    // FIXME: Remove this ugly hack after the plugin ordering API settled down
-    // if (preset.plugins['@vue/cli-plugin-router'] && preset.plugins['@vue/cli-plugin-typescript']) {
-    //   const tmp = preset.plugins['@vue/cli-plugin-typescript']
-    //   delete preset.plugins['@vue/cli-plugin-typescript']
-    //   preset.plugins['@vue/cli-plugin-typescript'] = tmp
-    // }
 
     // legacy support for vuex
     if (preset.vuex) {
@@ -369,10 +358,8 @@ module.exports = class Creator extends EventEmitter {
 
   // { id: options } => [{ id, apply, options }]
   async resolvePlugins (rawPlugins, pkg) {
-    // ensure cli-service is invoked first
-    // rawPlugins = sortObject(rawPlugins, ['@vue/cli-service'], true)
     /**
-     * @typedef {{before?: string|Array<string>, _before: Set<string> stage?: number)}} GeneratorApply
+     * @typedef {{before?: string|Array<string>, stage?: number}} GeneratorApply
      * @type {Array<{id: string, apply: GeneratorApply, options: any}>}
      */
     const plugins = []
@@ -401,37 +388,10 @@ module.exports = class Creator extends EventEmitter {
         }
       }
 
-      // TODO: define function in @vue/cli-shared-utils
-      if (typeof apply.before === 'string') {
-        apply._before = new Set([apply.before])
-      } else if (Array.isArray(apply.before)) {
-        apply._before = new Set(apply.before)
-      } else {
-        apply._before = new Set()
-      }
-
-      let stage = 100
-      if (typeof apply.stage === 'number') {
-        stage = apply.stage
-      }
-      let i = plugins.length
-      while (i > 0) {
-        i--
-        const x = plugins[i]
-        plugins[i + 1] = x
-        const xStage = x.apply.stage || 0
-        if (xStage > stage) {
-          continue
-        }
-        if (xStage === stage && !x.apply._before.has(id)) {
-          continue
-        }
-        i++
-        break
-      }
-      plugins[i] = { id, apply, options }
+      insertPluginByStage(plugins, { id, apply, options })
     }
-    return plugins
+    // arrange plugins by 'after' property
+    return arrangePlugins(plugins)
   }
 
   getPresets () {

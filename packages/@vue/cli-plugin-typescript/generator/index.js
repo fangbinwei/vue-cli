@@ -72,4 +72,4 @@ module.exports = (
   require('./convert')(api, { convertJsToTs })
 }
 
-module.exports.before = '@vue/cli-plugin-router'
+module.exports.after = '@vue/cli-plugin-router'

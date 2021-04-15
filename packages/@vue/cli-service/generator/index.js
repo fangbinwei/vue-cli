@@ -76,4 +76,5 @@ module.exports = (api, options) => {
   }
 }
 
+// ensure cli-service is invoked first
 module.exports.stage = 0
