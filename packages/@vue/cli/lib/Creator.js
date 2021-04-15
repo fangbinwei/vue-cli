@@ -359,13 +359,12 @@ module.exports = class Creator extends EventEmitter {
   // { id: options } => [{ id, apply, options }]
   async resolvePlugins (rawPlugins, pkg) {
     /**
-     * @typedef {{before?: string|Array<string>, stage?: number}} GeneratorApply
-     * @type {Array<{id: string, apply: GeneratorApply, options: any}>}
+     * @typedef {{after?: string|Array<string>, stage?: number}} Apply
+     * @type {Array<{id: string, apply: Apply, options: any, after: Set<string>, stage: number}>}
      */
     const plugins = []
 
     for (const id of Object.keys(rawPlugins)) {
-      /** @type {GeneratorApply}} */
       const apply = loadModule(`${id}/generator`, this.context) || (() => {})
       let options = rawPlugins[id] || {}
 
