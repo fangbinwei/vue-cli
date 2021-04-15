@@ -85,11 +85,11 @@ function TopologicalSorting (plugins) {
     const neighbors = graph.get(cur)
     if (!neighbors) continue
 
-    neighbors.forEach(neighbor => {
-      const indegree = indegrees.get(neighbor) - 1
-      indegrees.set(neighbor, indegree)
-      if (indegree === 0) {
-        queue.push(neighbors)
+    neighbors.forEach(n => {
+      const degree = indegrees.get(n) - 1
+      indegrees.set(n, degree)
+      if (degree === 0) {
+        queue.push(n)
       }
     })
   }
