@@ -1,4 +1,4 @@
-const { insertPluginByStage, topologicalSorting } = require('../lib/pluginOrder.js')
+const { insertPluginByStage, topologicalSorting, arrangePlugins } = require('../lib/pluginOrder.js')
 
 /**
  *
@@ -20,7 +20,7 @@ function plugin (id, order) {
 }
 
 describe('insertPluginByStage', () => {
-  test('No stage specified', () => {
+  test(`using default 'stage' will preserve sort order`, () => {
     const plugins = [
       plugin('foo'),
       plugin('bar'),
@@ -34,10 +34,10 @@ describe('insertPluginByStage', () => {
     expect(orderPlugins).toEqual(plugins)
   })
 
-  test('stage specified', () => {
+  test(`using same 'stage' will preserve sort order`, () => {
     const plugins = [
-      plugin('foo'),
-      plugin('bar', { stage: 0 }),
+      plugin('foo', { stage: 200 }),
+      plugin('bar', { stage: 200 }),
       plugin('baz', { stage: 200 })
     ]
     const orderPlugins = []
@@ -45,16 +45,36 @@ describe('insertPluginByStage', () => {
     insertPluginByStage(orderPlugins, plugins[1])
     insertPluginByStage(orderPlugins, plugins[2])
 
+    expect(orderPlugins).toEqual(plugins)
+  })
+
+  test(`several different 'stage'`, () => {
+    const plugins = [
+      plugin('foo'),
+      plugin('zot', { stage: 200 }),
+      plugin('fum', { stage: 100 }),
+      plugin('bar', { stage: 0 }),
+      plugin('baz', { stage: 200 })
+    ]
+    const orderPlugins = []
+    insertPluginByStage(orderPlugins, plugins[0])
+    insertPluginByStage(orderPlugins, plugins[1])
+    insertPluginByStage(orderPlugins, plugins[2])
+    insertPluginByStage(orderPlugins, plugins[3])
+    insertPluginByStage(orderPlugins, plugins[4])
+
     expect(orderPlugins).toEqual([
       plugin('bar', { stage: 0 }),
       plugin('foo'),
+      plugin('fum', { stage: 100 }),
+      plugin('zot', { stage: 200 }),
       plugin('baz', { stage: 200 })
     ])
   })
 })
 
 describe('topologicalSorting', () => {
-  test('no after specified', () => {
+  test(`no specifying 'after' will preserve sort order`, () => {
     const plugins = [
       plugin('foo'),
       plugin('bar'),
@@ -64,7 +84,7 @@ describe('topologicalSorting', () => {
     expect(orderPlugins).toEqual(plugins)
   })
 
-  test('after specified', () => {
+  test(`'after' specified`, () => {
     const plugins = [
       plugin('foo', { after: 'bar' }),
       plugin('bar', { after: 'baz' }),
@@ -78,7 +98,7 @@ describe('topologicalSorting', () => {
     ])
   })
 
-  test('after multiple', () => {
+  test(`'after' can be Array<string>`, () => {
     const plugins = [
       plugin('foo', { after: ['bar', 'baz'] }),
       plugin('bar'),
@@ -92,17 +112,50 @@ describe('topologicalSorting', () => {
     ])
   })
 
-  test('it is not possible to order plugins because of cyclic graph, return plugins directly', () => {
-    const plugins = [
+  test('it is not possible to order plugins because of cyclic graph, return original plugins directly', () => {
+    let plugins = [
       plugin('foo', { after: 'bar' }),
       plugin('bar', { after: 'baz' }),
       plugin('baz', { after: 'foo' })
     ]
-    const orderPlugins = topologicalSorting(plugins)
+    let orderPlugins = topologicalSorting(plugins)
+    expect(orderPlugins).toEqual(plugins)
+
+    plugins = [
+      plugin('foo', { after: 'bar' }),
+      plugin('bar', { after: 'foo' }),
+      plugin('baz')
+    ]
+    orderPlugins = topologicalSorting(plugins)
     expect(orderPlugins).toEqual(plugins)
   })
 })
 
 describe('arrangePlugins', () => {
-  // TODO:
+  test(`arrange plugins which already ordered by 'stage'`, () => {
+    const plugins = [
+      plugin('bar', { stage: 100, after: 'foo' }),
+      plugin('foo', { stage: 100 }),
+      plugin('fum', { stage: 200, after: 'baz' }),
+      plugin('zot', { stage: 200, after: 'baz' }),
+      plugin('baz', { stage: 200 })
+    ]
+    const orderPlugins = arrangePlugins(plugins)
+    expect(orderPlugins).toEqual([
+      plugin('foo', { stage: 100 }),
+      plugin('bar', { stage: 100, after: 'foo' }),
+      plugin('baz', { stage: 200 }),
+      plugin('fum', { stage: 200, after: 'baz' }),
+      plugin('zot', { stage: 200, after: 'baz' })
+    ])
+  })
+
+  test(`'stage' has a higher priority than 'after'`, () => {
+    const plugins = [
+      plugin('bar', { stage: 0, after: 'foo' }),
+      plugin('foo', { stage: 100 })
+    ]
+    const orderPlugins = arrangePlugins(plugins)
+    expect(orderPlugins).toEqual(plugins)
+  })
 })

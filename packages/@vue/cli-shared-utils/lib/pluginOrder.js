@@ -123,8 +123,8 @@ function topologicalSorting (plugins) {
 exports.topologicalSorting = topologicalSorting
 
 /**
- * Arrange plugins by 'after' property.
  * Plugins should be sorted by 'stage' property firstly.
+ * Arrange plugins by 'after' property.
  * @param {Array<Plugin>} plugins
  * @returns {Array<Plugin>}
  */
