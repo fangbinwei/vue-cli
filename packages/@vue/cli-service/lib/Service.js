@@ -6,7 +6,7 @@ const PluginAPI = require('./PluginAPI')
 const dotenv = require('dotenv')
 const dotenvExpand = require('dotenv-expand')
 const defaultsDeep = require('lodash.defaultsdeep')
-const { warn, error, isPlugin, resolvePluginId, loadModule, resolvePkg, resolveModule } = require('@vue/cli-shared-utils')
+const { warn, error, isPlugin, resolvePluginId, loadModule, resolvePkg, resolveModule, sortPluginsByStage, arrangePlugins } = require('@vue/cli-shared-utils')
 
 const { defaults } = require('./options')
 const checkWebpack = require('./util/checkWebpack')
@@ -172,7 +172,14 @@ module.exports = class Service {
       './config/css',
       './config/prod',
       './config/app'
-    ].map((id) => idToPlugin(id))
+    ].map((id) => {
+      const plugin = idToPlugin(id)
+      if (typeof plugin.apply.stage !== 'number') {
+        // plugin 'stage' is 100 by default, built-in plugins have a higher priority
+        plugin.apply.stage = 0
+      }
+      return plugin
+    })
 
     if (inlinePlugins) {
       plugins = useBuiltIn !== false
@@ -224,8 +231,13 @@ module.exports = class Service {
         apply: loadModule(`./${file}`, this.pkgContext)
       })))
     }
+    const stagePlugins = sortPluginsByStage(plugins)
+    debug('vue:stage-plugins')(stagePlugins)
 
-    return plugins
+    const orderedPlugins = arrangePlugins(stagePlugins)
+    debug('vue:ordered-plugins')(orderedPlugins)
+
+    return orderedPlugins
   }
 
   async run (name, args = {}, rawArgv = []) {

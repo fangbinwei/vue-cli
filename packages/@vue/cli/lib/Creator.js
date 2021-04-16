@@ -389,8 +389,14 @@ module.exports = class Creator extends EventEmitter {
 
       insertPluginByStage(plugins, { id, apply, options })
     }
+
+    debug('vue-cli:stage-plugins')(plugins)
+
     // arrange plugins by 'after' property
-    return arrangePlugins(plugins)
+    const orderedPlugins = arrangePlugins(plugins)
+    debug('vue-cli:ordered-plugins')(orderedPlugins)
+
+    return orderedPlugins
   }
 
   getPresets () {

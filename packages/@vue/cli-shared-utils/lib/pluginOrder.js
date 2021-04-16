@@ -43,7 +43,7 @@ function getOrderParams (plugin) {
  * @param {Array<Plugin>} plugins
  * @param {Plugin} item
  */
-exports.insertPluginByStage = (plugins, item) => {
+function insertPluginByStage (plugins, item) {
   const { stage } = getOrderParams(item)
 
   let i = plugins.length
@@ -59,6 +59,20 @@ exports.insertPluginByStage = (plugins, item) => {
     break
   }
   plugins[i] = item
+}
+
+/**
+ *
+ * @param {Array<Plugin>} plugins
+ * @returns {Array<Plugin>}
+ */
+function sortPluginsByStage (plugins) {
+  const sorted = []
+  plugins.forEach(p => {
+    insertPluginByStage(sorted, p)
+  })
+
+  return sorted
 }
 
 /**
@@ -120,7 +134,6 @@ function topologicalSorting (plugins) {
   // return valid ? res : []
   return valid ? res : plugins
 }
-exports.topologicalSorting = topologicalSorting
 
 /**
  * Plugins should be sorted by 'stage' property firstly.
@@ -128,7 +141,7 @@ exports.topologicalSorting = topologicalSorting
  * @param {Array<Plugin>} plugins
  * @returns {Array<Plugin>}
  */
-exports.arrangePlugins = (plugins) => {
+function arrangePlugins (plugins) {
   if (plugins.length < 2) return plugins
 
   /** @type {Array<Plugin>} */
@@ -150,4 +163,11 @@ exports.arrangePlugins = (plugins) => {
     res.push(...topologicalSorting(stageGroupPlugins))
   })
   return res
+}
+
+module.exports = {
+  insertPluginByStage,
+  sortPluginsByStage,
+  topologicalSorting,
+  arrangePlugins
 }
