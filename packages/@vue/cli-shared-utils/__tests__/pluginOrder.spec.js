@@ -1,4 +1,4 @@
-const { insertPluginByStage, topologicalSorting, arrangePlugins } = require('../lib/pluginOrder.js')
+const { sortPluginsByStage, topologicalSorting, arrangePlugins } = require('../lib/pluginOrder.js')
 
 /**
  *
@@ -19,18 +19,14 @@ function plugin (id, order) {
   }
 }
 
-describe('insertPluginByStage', () => {
+describe('sortPluginsByStage', () => {
   test(`using default 'stage' will preserve sort order`, () => {
     const plugins = [
       plugin('foo'),
       plugin('bar'),
       plugin('baz')
     ]
-    const orderPlugins = []
-    insertPluginByStage(orderPlugins, plugins[0])
-    insertPluginByStage(orderPlugins, plugins[1])
-    insertPluginByStage(orderPlugins, plugins[2])
-
+    const orderPlugins = sortPluginsByStage(plugins)
     expect(orderPlugins).toEqual(plugins)
   })
 
@@ -40,11 +36,7 @@ describe('insertPluginByStage', () => {
       plugin('bar', { stage: 200 }),
       plugin('baz', { stage: 200 })
     ]
-    const orderPlugins = []
-    insertPluginByStage(orderPlugins, plugins[0])
-    insertPluginByStage(orderPlugins, plugins[1])
-    insertPluginByStage(orderPlugins, plugins[2])
-
+    const orderPlugins = sortPluginsByStage(plugins)
     expect(orderPlugins).toEqual(plugins)
   })
 
@@ -56,12 +48,7 @@ describe('insertPluginByStage', () => {
       plugin('bar', { stage: 0 }),
       plugin('baz', { stage: 200 })
     ]
-    const orderPlugins = []
-    insertPluginByStage(orderPlugins, plugins[0])
-    insertPluginByStage(orderPlugins, plugins[1])
-    insertPluginByStage(orderPlugins, plugins[2])
-    insertPluginByStage(orderPlugins, plugins[3])
-    insertPluginByStage(orderPlugins, plugins[4])
+    const orderPlugins = sortPluginsByStage(plugins)
 
     expect(orderPlugins).toEqual([
       plugin('bar', { stage: 0 }),

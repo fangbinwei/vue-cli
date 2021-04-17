@@ -381,3 +381,43 @@ test('api: hasPlugin', async () => {
     }
   ])
 })
+
+test('service plugin order', async () => {
+  function apply (stage, after) {
+    const fn = () => {}
+    fn.stage = stage
+    fn.after = after
+    return fn
+  }
+
+  const service = new Service('/', {
+    plugins: [
+      {
+        id: 'vue-cli-plugin-foo',
+        apply: apply(200)
+      },
+      {
+        id: 'vue-cli-plugin-bar',
+        apply: apply(100, 'vue-cli-plugin-baz')
+      },
+      {
+        id: 'vue-cli-plugin-baz',
+        apply: apply(100)
+      }
+    ]
+  })
+  expect(service.plugins.map(p => p.id)).toEqual([
+    'built-in:commands/serve',
+    'built-in:commands/build',
+    'built-in:commands/inspect',
+    'built-in:commands/help',
+    'built-in:config/base',
+    'built-in:config/assets',
+    'built-in:config/css',
+    'built-in:config/prod',
+    'built-in:config/app',
+    'vue-cli-plugin-baz',
+    'vue-cli-plugin-bar',
+    'vue-cli-plugin-foo'
+  ])
+})
