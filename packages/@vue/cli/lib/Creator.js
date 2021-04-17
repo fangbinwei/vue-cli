@@ -13,7 +13,7 @@ const { formatFeatures } = require('./util/features')
 const loadLocalPreset = require('./util/loadLocalPreset')
 const loadRemotePreset = require('./util/loadRemotePreset')
 const generateReadme = require('./util/generateReadme')
-const { resolvePkg, isOfficialPlugin, insertPluginByStage, arrangePlugins } = require('@vue/cli-shared-utils')
+const { resolvePkg, isOfficialPlugin } = require('@vue/cli-shared-utils')
 
 const {
   defaults,
@@ -358,12 +358,7 @@ module.exports = class Creator extends EventEmitter {
 
   // { id: options } => [{ id, apply, options }]
   async resolvePlugins (rawPlugins, pkg) {
-    /**
-     * @typedef {{after?: string|Array<string>, stage?: number}} Apply
-     * @type {Array<{id: string, apply: Apply, options: any, after: Set<string>, stage: number}>}
-     */
     const plugins = []
-
     for (const id of Object.keys(rawPlugins)) {
       const apply = loadModule(`${id}/generator`, this.context) || (() => {})
       let options = rawPlugins[id] || {}
@@ -387,16 +382,9 @@ module.exports = class Creator extends EventEmitter {
         }
       }
 
-      insertPluginByStage(plugins, { id, apply, options })
+      plugins.push({ id, apply, options })
     }
-
-    debug('vue-cli:stage-plugins')(plugins)
-
-    // arrange plugins by 'after' property
-    const orderedPlugins = arrangePlugins(plugins)
-    debug('vue-cli:ordered-plugins')(orderedPlugins)
-
-    return orderedPlugins
+    return plugins
   }
 
   getPresets () {

@@ -14,7 +14,10 @@ const {
   toShortPluginId,
   matchesPluginId,
 
-  loadModule
+  loadModule,
+
+  sortPluginsByStage,
+  arrangePlugins
 } = require('@vue/cli-shared-utils')
 const ConfigTransform = require('./ConfigTransform')
 
@@ -173,8 +176,18 @@ module.exports = class Generator {
     this.afterAnyInvokeCbs = []
     this.postProcessFilesCbs = []
 
+    // plugin order
+    debug('vue:plugins')(this.plugins)
+
+    const stagePlugins = sortPluginsByStage(this.plugins)
+    debug('vue:plugins-stage')(stagePlugins)
+
+    // arrange plugins by 'after' property
+    const orderedPlugins = arrangePlugins(stagePlugins)
+    debug('vue:plugins-ordered')(orderedPlugins)
+
     // apply generators from plugins
-    for (const plugin of this.plugins) {
+    for (const plugin of orderedPlugins) {
       const { id, apply, options } = plugin
       const api = new GeneratorAPI(id, this, options, rootOptions)
       await apply(api, options, rootOptions, invoking)

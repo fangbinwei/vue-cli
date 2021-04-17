@@ -231,11 +231,13 @@ module.exports = class Service {
         apply: loadModule(`./${file}`, this.pkgContext)
       })))
     }
+    debug('vue:plugins')(plugins)
+
     const stagePlugins = sortPluginsByStage(plugins)
-    debug('vue:stage-plugins')(stagePlugins)
+    debug('vue:plugins-stage')(stagePlugins)
 
     const orderedPlugins = arrangePlugins(stagePlugins)
-    debug('vue:ordered-plugins')(orderedPlugins)
+    debug('vue:plugins-ordered')(orderedPlugins)
 
     return orderedPlugins
   }
