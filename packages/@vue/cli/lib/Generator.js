@@ -16,8 +16,7 @@ const {
 
   loadModule,
 
-  sortPluginsByStage,
-  arrangePlugins
+  sortPlugins
 } = require('@vue/cli-shared-utils')
 const ConfigTransform = require('./ConfigTransform')
 
@@ -112,7 +111,7 @@ module.exports = class Generator {
     invoking = false
   } = {}) {
     this.context = context
-    this.plugins = plugins
+    this.plugins = sortPlugins(plugins)
     this.originalPkg = pkg
     this.pkg = Object.assign({}, pkg)
     this.pm = new PackageManager({ context })
@@ -138,9 +137,7 @@ module.exports = class Generator {
     this.exitLogs = []
 
     // load all the other plugins
-    this.allPluginIds = Object.keys(this.pkg.dependencies || {})
-      .concat(Object.keys(this.pkg.devDependencies || {}))
-      .filter(isPlugin)
+    this.allPlugins = this.resolveAllPlugins()
 
     const cliService = plugins.find(p => p.id === '@vue/cli-service')
     const rootOptions = cliService
@@ -158,12 +155,12 @@ module.exports = class Generator {
     const passedAfterInvokeCbs = this.afterInvokeCbs
     this.afterInvokeCbs = []
     // apply hooks from all plugins to collect 'afterAnyHooks'
-    for (const id of this.allPluginIds) {
+    for (const plugin of this.allPlugins) {
+      const { id, apply } = plugin
       const api = new GeneratorAPI(id, this, {}, rootOptions)
-      const pluginGenerator = loadModule(`${id}/generator`, this.context)
 
-      if (pluginGenerator && pluginGenerator.hooks) {
-        await pluginGenerator.hooks(api, {}, rootOptions, pluginIds)
+      if (apply.hooks) {
+        await apply.hooks(api, {}, rootOptions, pluginIds)
       }
     }
 
@@ -176,18 +173,8 @@ module.exports = class Generator {
     this.afterAnyInvokeCbs = []
     this.postProcessFilesCbs = []
 
-    // plugin order
-    debug('vue:plugins')(this.plugins)
-
-    const stagePlugins = sortPluginsByStage(this.plugins)
-    debug('vue:plugins-stage')(stagePlugins)
-
-    // arrange plugins by 'after' property
-    const orderedPlugins = arrangePlugins(stagePlugins)
-    debug('vue:plugins-ordered')(orderedPlugins)
-
     // apply generators from plugins
-    for (const plugin of orderedPlugins) {
+    for (const plugin of this.plugins) {
       const { id, apply, options } = plugin
       const api = new GeneratorAPI(id, this, options, rootOptions)
       await apply(api, options, rootOptions, invoking)
@@ -195,7 +182,7 @@ module.exports = class Generator {
       if (apply.hooks) {
         // while we execute the entire `hooks` function,
         // only the `afterInvoke` hook is respected
-        // because `afterAnyHooks` is already determined by the `allPluginIds` loop above
+        // because `afterAnyHooks` is already determined by the `allPlugins` loop above
         await apply.hooks(api, options, rootOptions, pluginIds)
       }
     }
@@ -304,6 +291,19 @@ module.exports = class Generator {
     debug('vue:cli-pkg')(this.pkg)
   }
 
+  resolveAllPlugins () {
+    const allPlugins = []
+    Object.keys(this.pkg.dependencies || {})
+      .concat(Object.keys(this.pkg.devDependencies || {}))
+      .forEach(id => {
+        if (!isPlugin(id)) return
+        const pluginGenerator = loadModule(`${id}/generator`, this.context)
+        if (!pluginGenerator) return
+        allPlugins.push({ id, apply: pluginGenerator })
+      })
+    return sortPlugins(allPlugins)
+  }
+
   async resolveFiles () {
     const files = this.files
     for (const middleware of this.fileMiddlewares) {
@@ -346,7 +346,7 @@ module.exports = class Generator {
   hasPlugin (id, versionRange) {
     const pluginExists = [
       ...this.plugins.map(p => p.id),
-      ...this.allPluginIds
+      ...this.allPlugins.map(p => p.id)
     ].some(pid => matchesPluginId(id, pid))
 
     if (!pluginExists) {

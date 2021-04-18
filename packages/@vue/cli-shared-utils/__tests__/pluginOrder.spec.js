@@ -1,4 +1,4 @@
-const { sortPluginsByStage, topologicalSorting, arrangePlugins } = require('../lib/pluginOrder.js')
+const { sortPluginsByStage, topologicalSorting, sortPlugins } = require('../lib/pluginOrder.js')
 
 /**
  *
@@ -99,7 +99,7 @@ describe('topologicalSorting', () => {
     ])
   })
 
-  test('it is not possible to order plugins because of cyclic graph, return original plugins directly', () => {
+  test('it is not possible to sort plugins because of cyclic graph, return original plugins directly', () => {
     let plugins = [
       plugin('foo', { after: 'bar' }),
       plugin('bar', { after: 'baz' }),
@@ -118,16 +118,16 @@ describe('topologicalSorting', () => {
   })
 })
 
-describe('arrangePlugins', () => {
-  test(`arrange plugins which already ordered by 'stage'`, () => {
+describe('sortPlugins', () => {
+  test(`sort plugins by 'stage' and 'after'`, () => {
     const plugins = [
       plugin('bar', { stage: 100, after: 'foo' }),
-      plugin('foo', { stage: 100 }),
       plugin('fum', { stage: 200, after: 'baz' }),
+      plugin('foo', { stage: 100 }),
       plugin('zot', { stage: 200, after: 'baz' }),
       plugin('baz', { stage: 200 })
     ]
-    const orderPlugins = arrangePlugins(plugins)
+    const orderPlugins = sortPlugins(plugins)
     expect(orderPlugins).toEqual([
       plugin('foo', { stage: 100 }),
       plugin('bar', { stage: 100, after: 'foo' }),
@@ -139,10 +139,13 @@ describe('arrangePlugins', () => {
 
   test(`'stage' has a higher priority than 'after'`, () => {
     const plugins = [
+      plugin('foo', { stage: 100 }),
+      plugin('bar', { stage: 0, after: 'foo' })
+    ]
+    const orderPlugins = sortPlugins(plugins)
+    expect(orderPlugins).toEqual([
       plugin('bar', { stage: 0, after: 'foo' }),
       plugin('foo', { stage: 100 })
-    ]
-    const orderPlugins = arrangePlugins(plugins)
-    expect(orderPlugins).toEqual(plugins)
+    ])
   })
 })

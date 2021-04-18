@@ -382,27 +382,28 @@ test('api: hasPlugin', async () => {
   ])
 })
 
-test('service plugin order', async () => {
-  function apply (stage, after) {
-    const fn = () => {}
-    fn.stage = stage
-    fn.after = after
+test('order: service plugins order', async () => {
+  const applyCallOrder = []
+  function apply (id, order) {
+    order = order || {}
+    const fn = jest.fn(() => { applyCallOrder.push(id) })
+    fn.stage = order.stage
+    fn.after = order.after
     return fn
   }
-
   const service = new Service('/', {
     plugins: [
       {
         id: 'vue-cli-plugin-foo',
-        apply: apply(200)
+        apply: apply('vue-cli-plugin-foo', { stage: 200 })
       },
       {
         id: 'vue-cli-plugin-bar',
-        apply: apply(100, 'vue-cli-plugin-baz')
+        apply: apply('vue-cli-plugin-bar', { stage: 100, after: 'vue-cli-plugin-baz' })
       },
       {
         id: 'vue-cli-plugin-baz',
-        apply: apply(100)
+        apply: apply('vue-cli-plugin-baz', { stage: 100 })
       }
     ]
   })
@@ -416,6 +417,13 @@ test('service plugin order', async () => {
     'built-in:config/css',
     'built-in:config/prod',
     'built-in:config/app',
+    'vue-cli-plugin-baz',
+    'vue-cli-plugin-bar',
+    'vue-cli-plugin-foo'
+  ])
+
+  await service.init()
+  expect(applyCallOrder).toEqual([
     'vue-cli-plugin-baz',
     'vue-cli-plugin-bar',
     'vue-cli-plugin-foo'

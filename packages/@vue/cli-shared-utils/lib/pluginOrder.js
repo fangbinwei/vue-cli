@@ -136,13 +136,15 @@ function topologicalSorting (plugins) {
 }
 
 /**
- * Plugins should be sorted by 'stage' property firstly.
- * Arrange plugins by 'after' property.
+ * Plugins will be sorted by 'stage' property firstly.
+ * Then arrange plugins by 'after' property.
  * @param {Array<Plugin>} plugins
  * @returns {Array<Plugin>}
  */
-function arrangePlugins (plugins) {
+function sortPlugins (plugins) {
   if (plugins.length < 2) return plugins
+
+  const stagePlugins = sortPluginsByStage(plugins)
 
   /** @type {Array<Plugin>} */
   const res = []
@@ -150,8 +152,8 @@ function arrangePlugins (plugins) {
   /** @type {Map<number, Array<Plugin>>} */
   const stageGroup = new Map()
 
-  for (let i = 0; i < plugins.length; i++) {
-    const cur = plugins[i]
+  for (let i = 0; i < stagePlugins.length; i++) {
+    const cur = stagePlugins[i]
     const stage = getOrderParams(cur).stage
     if (!stageGroup.has(stage)) {
       stageGroup.set(stage, [])
@@ -169,5 +171,5 @@ module.exports = {
   insertPluginByStage,
   sortPluginsByStage,
   topologicalSorting,
-  arrangePlugins
+  sortPlugins
 }
