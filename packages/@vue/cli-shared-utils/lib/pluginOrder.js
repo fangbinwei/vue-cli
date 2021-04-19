@@ -1,4 +1,5 @@
 // @ts-check
+const { warn } = require('./logger')
 const DEFAULT_STAGE = 100
 
 /** @typedef {{after?: string|Array<string>, stage?: number}} Apply */
@@ -93,20 +94,19 @@ function topologicalSorting (plugins) {
   plugins.forEach(p => {
     const after = getOrderParams(p).after
     indegrees.set(p, after.size)
-    if (after.size > 0) {
-      for (const id of after) {
-        const prerequisite = pluginsMap.get(id)
-        // remove invalid data
-        if (!prerequisite) {
-          indegrees.set(p, indegrees.get(p) - 1)
-          continue
-        }
-
-        if (!graph.has(prerequisite)) {
-          graph.set(prerequisite, [])
-        }
-        graph.get(prerequisite).push(p)
+    if (after.size === 0) return
+    for (const id of after) {
+      const prerequisite = pluginsMap.get(id)
+      // remove invalid data
+      if (!prerequisite) {
+        indegrees.set(p, indegrees.get(p) - 1)
+        continue
       }
+
+      if (!graph.has(prerequisite)) {
+        graph.set(prerequisite, [])
+      }
+      graph.get(prerequisite).push(p)
     }
   })
 
@@ -130,9 +130,11 @@ function topologicalSorting (plugins) {
     })
   }
   const valid = res.length === plugins.length
-  // TODO: show warning to user when invalid? or return plugins directly
-  // return valid ? res : []
-  return valid ? res : plugins
+  if (!valid) {
+    warn(`No proper plugin execution order found.`)
+    return plugins
+  }
+  return res
 }
 
 /**
